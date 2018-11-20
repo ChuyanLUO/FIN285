@@ -19,7 +19,7 @@ from scipy import stats
 from pandas import ExcelWriter
 from pandas import ExcelFile
 
-# download price
+#A. download price
 def getDataBatch(tickers, startdate, enddate):
   def getData(ticker):
     return (pdr.get_data_yahoo(ticker, start=startdate, end=enddate))
@@ -33,3 +33,23 @@ daily_close_px = stock_data.reset_index().pivot(index='Date', columns='Ticker', 
 daily_return = daily_close_px.pct_change().dropna()
 # write excel
 daily_close_px.to_csv('TEdata.csv', header=True, index=True) # this will write the column header & index
+
+#B. Find out weights of index
+
+#C. Forecast covariance matrix
+#1. #MA
+
+
+##2. EWMA
+
+
+#D. Build ETF
+#1. Pick Assets
+
+#2. Build covariance matrix
+
+#3. Partitioning
+
+#4. Cross validation
+
+#5. Adjust ETF and repeat 
