@@ -19,6 +19,8 @@ from scipy import stats
 from pandas import ExcelWriter
 from pandas import ExcelFile
 from scipy import optimize
+import matplotlib.pyplot as plt
+import statsmodels.tsa.stattools as sts
 
 # weights
 TickerNWeights = pd.read_excel('weight.xlsx', sheet_name='Sheet1', header=0)
@@ -41,7 +43,45 @@ num_periods, num_stock = daily_return.shape
 # write excel
 daily_close_px.to_csv('TEdata.csv', header=True, index=True)
 
-#B. Find out weights of index
+Index_prs = np.ones(2518)
+
+for i in range(0,2518):
+    Index_prs[i] = np.sum(daily_close_px.iloc[i,:]*TickerNWeights.loc[:,"Weight"])
+Index_prs = pd.DataFrame(Index_prs, index=daily_close_px.index)
+
+daily_ret_index = daily_close_px.pct_change().dropna() 
+
+Index_ret = np.ones(2517)
+for i in range(0,2517):
+    Index_ret[i] = np.sum(daily_ret_index.iloc[i,:]*TickerNWeights.loc[:,"Weight"])
+    
+Index_ret = pd.DataFrame(Index_ret, index=daily_ret_index.index)
+Index_risk = pd.DataFrame(Index_ret**2, index=daily_ret_index.index) 
+
+
+figure_count = 1
+ax1=plt.subplot(111)
+plt.plot(Index_prs)
+plt.xlabel('Time')
+plt.ylabel('Index Daily Close Px')
+plt.title('Index Daily Close Px')
+plt.show()
+
+ax2=plt.subplot(111)
+plt.plot(Index_ret)
+plt.xlabel('Time')
+plt.ylabel('Index Daily Return')
+plt.title('Index Daily Return')
+plt.show()
+
+ax3=plt.subplot(111)
+plt.plot(Index_risk)
+plt.xlabel('Time')
+plt.ylabel('Index Daily Variance')
+plt.title('Index Daily Variance')
+plt.show()
+
+
 
 #C. Forecast covariance matrix
 #1. #MA
