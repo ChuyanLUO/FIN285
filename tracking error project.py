@@ -19,7 +19,7 @@ from scipy import stats
 from pandas import ExcelWriter
 from pandas import ExcelFile
 
-#A. download price
+# download price
 def getDataBatch(tickers, startdate, enddate):
   def getData(ticker):
     return (pdr.get_data_yahoo(ticker, start=startdate, end=enddate))
@@ -30,9 +30,12 @@ end_dt = datetime.datetime(2018, 10, 31)
 tickers = ['ACAD','ALKS','ALNY','ALXN','AMGN','ARRY','BIIB','BMRN','CELG','EXEL','FOLD','GHDX','GILD','HALO','ILMN','IMMU','INCY','IONS','JAZZ','LGND','MDCO','MYGN','MYL','NBIX','NKTR','OPK','REGN','RGEN','SGEN','SHPG','SRPT','TECH','UTHR','VRTX']
 stock_data = getDataBatch(tickers, start_dt, end_dt)
 daily_close_px = stock_data.reset_index().pivot(index='Date', columns='Ticker', values='Adj Close')
+# Calculate returns
 daily_return = daily_close_px.pct_change().dropna()
 # write excel
-daily_close_px.to_csv('TEdata.csv', header=True, index=True) # this will write the column header & index
+daily_close_px.to_csv('TEdata.csv', header=True, index=True)
+# weights
+TickerNWeights = pd.read_excel('weight.xlsx', sheet_name='Sheet1', header=0, index_col=0)
 
 #B. Find out weights of index
 
