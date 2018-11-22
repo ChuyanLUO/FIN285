@@ -37,12 +37,14 @@ end_dt = datetime.datetime(2018, 10, 31)
 tickers = TickerNWeights['Ticker']
 stock_data = getDataBatch(tickers, start_dt, end_dt)
 daily_close_px = stock_data.reset_index().pivot(index='Date', columns='Ticker', values='Adj Close')
-# Calculate returns
-daily_return = daily_close_px.pct_change().dropna()
-num_periods, num_stock = daily_return.shape
 # write excel
 daily_close_px.to_csv('TEdata.csv', header=True, index=True)
+# sort tickers by weights
+daily_close_px_transpose = daily_close_px.T
+daily_close_px_transpose.loc[:,'Weight'] = TickerNWeights.loc[:,'Weight']
+daily_close_px_sort = daily_close_px_transpose.sort_values('Weight',ascending=False,axis=0)
 
+daily_close_px_transpose['Weight'].head()
 Index_prs = np.ones(2518)
 
 for i in range(0,2518):
