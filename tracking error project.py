@@ -45,6 +45,7 @@ daily_close_px_transpose.loc[:,'Weight'] = TickerNWeights.loc[:,'Weight']
 daily_close_px_sort = daily_close_px_transpose.sort_values('Weight',ascending=False,axis=0)
 
 daily_close_px_transpose['Weight'].head()
+#-------------------------------Luo------------------------------------------------
 Index_prs = np.ones(2518)
 
 for i in range(0,2518):
@@ -82,7 +83,7 @@ plt.xlabel('Time')
 plt.ylabel('Index Daily Variance')
 plt.title('Index Daily Variance')
 plt.show()
-
+#-----------------------------------------------------------------------------------------------------
 
 
 #C. Forecast covariance matrix
