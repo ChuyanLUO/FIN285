@@ -18,7 +18,11 @@ import scipy
 from scipy import stats
 from pandas import ExcelWriter
 from pandas import ExcelFile
+from scipy import optimize
 
+# weights
+TickerNWeights = pd.read_excel('weight.xlsx', sheet_name='Sheet1', header=0)
+wts_index = TickerNWeights['Weight']
 # download price
 def getDataBatch(tickers, startdate, enddate):
   def getData(ticker):
@@ -27,15 +31,15 @@ def getDataBatch(tickers, startdate, enddate):
   return(pd.concat(datas, keys=tickers, names=['Ticker', 'Date']))
 start_dt = datetime.datetime(2008, 10, 31)
 end_dt = datetime.datetime(2018, 10, 31)
-tickers = ['ACAD','ALKS','ALNY','ALXN','AMGN','ARRY','BIIB','BMRN','CELG','EXEL','FOLD','GHDX','GILD','HALO','ILMN','IMMU','INCY','IONS','JAZZ','LGND','MDCO','MYGN','MYL','NBIX','NKTR','OPK','REGN','RGEN','SGEN','SHPG','SRPT','TECH','UTHR','VRTX']
+# tickers = ['ACAD','ALKS','ALNY','ALXN','AMGN','ARRY','BIIB','BMRN','CELG','EXEL','FOLD','GHDX','GILD','HALO','ILMN','IMMU','INCY','IONS','JAZZ','LGND','MDCO','MYGN','MYL','NBIX','NKTR','OPK','REGN','RGEN','SGEN','SHPG','SRPT','TECH','UTHR','VRTX']
+tickers = TickerNWeights['Ticker']
 stock_data = getDataBatch(tickers, start_dt, end_dt)
 daily_close_px = stock_data.reset_index().pivot(index='Date', columns='Ticker', values='Adj Close')
 # Calculate returns
 daily_return = daily_close_px.pct_change().dropna()
+num_periods, num_stock = daily_return.shape
 # write excel
 daily_close_px.to_csv('TEdata.csv', header=True, index=True)
-# weights
-TickerNWeights = pd.read_excel('weight.xlsx', sheet_name='Sheet1', header=0, index_col=0)
 
 #B. Find out weights of index
 
