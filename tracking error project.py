@@ -5,6 +5,7 @@ Created on Mon Nov 19 09:08:30 2018
 
 @author: jingxiaowang
 """
+
 import pandas as pd  
 import numpy as np
 pd.core.common.is_list_like = pd.api.types.is_list_like
@@ -14,11 +15,8 @@ yf.pdr_override()
 import datetime 
 import warnings
 warnings.filterwarnings("ignore")
-import scipy
-from scipy import stats
-from pandas import ExcelWriter
-from pandas import ExcelFile
 from scipy import optimize
+import matplotlib.pyplot as plt
 
 # download price
 def getDataBatch(tickers, startdate, enddate):
@@ -35,6 +33,7 @@ daily_close_px = stock_data.reset_index().pivot(index='Date', columns='Ticker', 
 daily_close_px.to_csv('TEdata.csv', header=True, index=True)
 # weights
 TickerNWeights = pd.read_excel('weight.xlsx', sheet_name='Sheet1', header=0, index_col=0)
+TickerNWeights = TickerNWeights.sort_values('Weight',ascending=False)
 wts_index = TickerNWeights['Weight']
 # sort tickers by weights
 daily_close_px_transpose = daily_close_px.T
@@ -46,23 +45,14 @@ daily_close_px2 = daily_close_px_sort.T
 # Calculate returns
 daily_return = daily_close_px2.pct_change().dropna()
 num_periods, num_stock = daily_return.shape
-#-------------------------------Luo------------------------------------------------
-Index_prs = np.ones(2518)
 
-for i in range(0,2518):
-    Index_prs[i] = np.sum(daily_close_px.iloc[i,:]*TickerNWeights.loc[:,"Weight"])
-Index_prs = pd.DataFrame(Index_prs, index=daily_close_px.index)
-
-daily_ret_index = daily_close_px.pct_change().dropna() 
-
-Index_ret = np.ones(2517)
-for i in range(0,2517):
-    Index_ret[i] = np.sum(daily_ret_index.iloc[i,:]*TickerNWeights.loc[:,"Weight"])
-    
-Index_ret = pd.DataFrame(Index_ret, index=daily_ret_index.index)
-Index_risk = pd.DataFrame(Index_ret**2, index=daily_ret_index.index) 
-
-
+# Descriptive plots
+# index price
+Index_prs = pd.DataFrame(daily_close_px2 @ TickerNWeights)
+# index return
+Index_ret = pd.DataFrame(daily_return @ TickerNWeights)
+# index risk
+Index_risk = pd.DataFrame(Index_ret ** 2)
 figure_count = 1
 ax1=plt.subplot(111)
 plt.plot(Index_prs)
@@ -70,24 +60,19 @@ plt.xlabel('Time')
 plt.ylabel('Index Daily Close Px')
 plt.title('Index Daily Close Px')
 plt.show()
-
 ax2=plt.subplot(111)
 plt.plot(Index_ret)
 plt.xlabel('Time')
 plt.ylabel('Index Daily Return')
 plt.title('Index Daily Return')
 plt.show()
-
 ax3=plt.subplot(111)
 plt.plot(Index_risk)
 plt.xlabel('Time')
 plt.ylabel('Index Daily Variance')
 plt.title('Index Daily Variance')
 plt.show()
-#-----------------------------------------------------------------------------------------------------
 
-
-#C. Forecast covariance matrix
 # define optimizer function step by step
 def rand_weights(n):
     ''' Produces n random weights that sum to 1 '''
@@ -120,7 +105,8 @@ def obj_te(W, W_Bench, C):
 
 def opt_min_te(W, C, b_, c_):
     return(te_opt(W, C, obj_te, c_, b_))
-    
+
+## EWMA Approach
 # define EWMA covariance
 def ewma_cov(rets, lam): 
     T, n = rets.shape
@@ -135,7 +121,7 @@ def ewma_cov(rets, lam):
 
     return(EWMA)
 
-# Calulate Covariance Matrix
+# Calulate Covariance Matrix 
    
 def tracking_error(wts_active,cov):
     TE = np.sqrt(np.transpose(wts_active)@cov@wts_active)
@@ -159,6 +145,85 @@ std_end_annual = np.sqrt(np.diag(cov_end))*np.sqrt(252)
 # calculate the correlation matrix
 corr = daily_return.corr()
 
+# looping through number of stocks and save the history of TEs
+num_stock_low = 10
+num_stock_high = 25
+numstock_2use = range(num_stock_low,num_stock_high)
+wts_active_hist = np.zeros([len(numstock_2use), num_stock])
+TE_hist = np.zeros([len(numstock_2use), 1])
+count = 0
+
+for i in numstock_2use:
+    # only the top weight stocks + allow shorting 
+    b1_c_a_ = [(-1.0,1.0) for j in range(i)] 
+    # exclude bottom weighted stocks
+    b1_c_b_ = [(0.0,0.0) for j in range(i,num_stock)] 
+    b1_curr_ = b1_c_a_ + b1_c_b_
+    # Sum of active weights = 100%
+    c1_ = ({'type':'eq', 'fun': lambda W: sum(W)-1. })
+    wts_min_curr = opt_min_te(wts_index, cov_end_annual, b1_curr_, c1_)
+    wts_active_hist[count,:] = wts_min_curr.transpose()
+    TE_optimized_c = tracking_error(wts_min_curr-wts_index,cov_end)
+    TE_hist[count,:] = TE_optimized_c*10000# in bps
+    count = count+1
+    
+    del b1_curr_, b1_c_a_, b1_c_b_,TE_optimized_c,wts_min_curr
+
+#------plot TE as a function of number of stocks -------------
+plt.figure(figure_count)
+figure_count = figure_count+1
+fig, ax = plt.subplots(figsize=(12,8))
+plt.plot(range(num_stock_low,num_stock_high), TE_hist, 'b')
+plt.xlabel('Number of stocks in ETF', fontsize=18)
+plt.ylabel('Optimized Tracking Error (bps)', fontsize=18)
+plt.title('Biotech ETF', fontsize=18)
+ax.xaxis.set_tick_params(labelsize=14)
+ax.yaxis.set_tick_params(labelsize=14)
+
+# choose the number of index and show the min TE
+num_topwtstock_include = 17
+# only the top weight stocks + allow shorting 
+b1a_ = [(-1.0,1.0) for i in range(num_topwtstock_include)] 
+# exclude bottom weighted stocks
+b1b_ = [(0.0,0.0) for i in range(num_topwtstock_include,num_stock)] 
+b1_ = b1a_ + b1b_ # combining the constraints
+c1_ = ({'type':'eq', 'fun': lambda W: sum(W)-1. })  # Sum of active weights = 100%
+# Calling the optimizer
+wts_min_trackingerror = opt_min_te(wts_index, cov_end_annual, b1_, c1_)
+# calc TE achieved
+wts_active = wts_min_trackingerror - wts_index
+TE_optimized = tracking_error(wts_active,cov_end)
+print('{0} top weighted stock replication TE = {1:5.2f} bps'.format(num_topwtstock_include, TE_optimized*10000))
+
+#  Plot bars of weights
+figure_count = figure_count+1
+# ---  create plot of weights fund vs benchmark
+plt.figure(figure_count)
+figure_count = figure_count+1
+fig, ax = plt.subplots(figsize=(18,10))
+index = np.arange(len(wts_index))
+bar_width = 0.3
+opacity = 0.6
+ 
+rects1 = plt.bar(index, wts_index, bar_width,
+                 alpha=opacity,
+                 color='b',
+                 label='Index Weight')
+ 
+rects2 = plt.bar(index + bar_width, wts_min_trackingerror, bar_width,
+                 alpha=opacity,
+                 color='g',
+                 label='ETF fund Weight')
+ 
+plt.xlabel('Ticker', fontsize=18)
+plt.ylabel('Weights', fontsize=18)
+plt.xticks(index + bar_width, (daily_close_px2.columns.values), fontsize=12)
+ax.xaxis.set_tick_params(labelsize=14)
+ax.yaxis.set_tick_params(labelsize=18)
+plt.legend(fontsize=20)
+ 
+plt.tight_layout()
+plt.show()
 
 #1. #MA
 
