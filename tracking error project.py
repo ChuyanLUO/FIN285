@@ -3,7 +3,15 @@
 """
 Created on Mon Nov 19 09:08:30 2018
 
-@author: jingxiaowang
+@author: jingxiaowang & Chuyan Luo
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Nov 21 22:27:48 2018
+
+@author: luochuyan
 """
 
 import pandas as pd  
@@ -44,7 +52,6 @@ del daily_close_px_sort['Weight']
 daily_close_px2 = daily_close_px_sort.T
 # Calculate returns
 daily_return = daily_close_px2.pct_change().dropna()
-num_periods, num_stock = daily_return.shape
 
 # Descriptive plots
 # index price
@@ -53,6 +60,8 @@ Index_prs = pd.DataFrame(daily_close_px2 @ TickerNWeights)
 Index_ret = pd.DataFrame(daily_return @ TickerNWeights)
 # index risk
 Index_risk = pd.DataFrame(Index_ret ** 2)
+
+#Figure of daily close prs
 figure_count = 1
 ax1=plt.subplot(111)
 plt.plot(Index_prs)
@@ -60,12 +69,14 @@ plt.xlabel('Time')
 plt.ylabel('Index Daily Close Px')
 plt.title('Index Daily Close Px')
 plt.show()
+#Figure of daily returns
 ax2=plt.subplot(111)
 plt.plot(Index_ret)
 plt.xlabel('Time')
 plt.ylabel('Index Daily Return')
 plt.title('Index Daily Return')
 plt.show()
+#Figure of daily variance
 ax3=plt.subplot(111)
 plt.plot(Index_risk)
 plt.xlabel('Time')
@@ -106,6 +117,12 @@ def obj_te(W, W_Bench, C):
 def opt_min_te(W, C, b_, c_):
     return(te_opt(W, C, obj_te, c_, b_))
 
+##Data partitioning
+daily_ret_train = np.split(daily_return, [2015-12-31],axis=0)[0]
+daily_ret_valid = np.split(daily_return, [2015-12-31],axis=0)[1]
+
+num_periods, num_stock = daily_ret_train.shape
+
 ## EWMA Approach
 # define EWMA covariance
 def ewma_cov(rets, lam): 
@@ -129,13 +146,13 @@ def tracking_error(wts_active,cov):
 
 lam = 0.94
 # vol of the assets 
-vols = daily_return.std()
-rets_mean = daily_return.mean()
+vols = daily_ret_train.std()
+rets_mean = daily_ret_train.mean()
 # demean the returns
-daily_return = daily_return - rets_mean
+daily_ret_train = daily_ret_train - rets_mean
 
 # var_ewma calculation by calling ewma_cov function
-var_ewma = ewma_cov(daily_return, lam)
+var_ewma = ewma_cov(daily_ret_train, lam)
 var_ewma_annual = var_ewma*252 #Annualize
 # take only the covariance matrix for the last date, which is the forecast for next time period
 cov_end = var_ewma[-1,:]
@@ -143,7 +160,7 @@ cov_end = var_ewma[-1,:]
 cov_end_annual = cov_end*252 
 std_end_annual = np.sqrt(np.diag(cov_end))*np.sqrt(252)
 # calculate the correlation matrix
-corr = daily_return.corr()
+corr = daily_ret_train.corr()
 
 # looping through number of stocks and save the history of TEs
 num_stock_low = 10
@@ -181,7 +198,7 @@ ax.xaxis.set_tick_params(labelsize=14)
 ax.yaxis.set_tick_params(labelsize=14)
 
 # choose the number of index and show the min TE
-num_topwtstock_include = 17
+num_topwtstock_include = 19
 # only the top weight stocks + allow shorting 
 b1a_ = [(-1.0,1.0) for i in range(num_topwtstock_include)] 
 # exclude bottom weighted stocks
@@ -193,7 +210,7 @@ wts_min_trackingerror = opt_min_te(wts_index, cov_end_annual, b1_, c1_)
 # calc TE achieved
 wts_active = wts_min_trackingerror - wts_index
 TE_optimized = tracking_error(wts_active,cov_end)
-print('{0} top weighted stock replication TE = {1:5.2f} bps'.format(num_topwtstock_include, TE_optimized*10000))
+print('{0} top weighted stock replication TE in training set= {1:5.2f} bps'.format(num_topwtstock_include, TE_optimized*10000))
 
 #  Plot bars of weights
 figure_count = figure_count+1
@@ -224,6 +241,28 @@ plt.legend(fontsize=20)
  
 plt.tight_layout()
 plt.show()
+
+# vol of the assets 
+vols_v = daily_ret_valid.std()
+rets_mean_v = daily_ret_valid.mean()
+# demean the returns
+daily_ret_valid = daily_ret_valid - rets_mean_v
+
+# var_ewma calculation by calling ewma_cov function
+var_ewma_v = ewma_cov(daily_ret_valid, lam)
+var_ewma_annual_v = var_ewma_v*252 #Annualize
+# take only the covariance matrix for the last date, which is the forecast for next time period
+cov_end_v = var_ewma_v[-1,:]
+# Annualize
+cov_end_annual_v = cov_end_v*252 
+std_end_annual_v = np.sqrt(np.diag(cov_end_v))*np.sqrt(252)
+# calculate the correlation matrix
+corr_v = daily_ret_valid.corr()
+
+TE_optimized_v = tracking_error(wts_active,cov_end_v)
+print('{0} top weighted stock replication TE in validation set= {1:5.2f} bps'.format(num_topwtstock_include, TE_optimized_v*10000))
+
+
 
 #1. #MA
 
