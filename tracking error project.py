@@ -6,22 +6,6 @@ Created on Mon Nov 19 09:08:30 2018
 @author: jingxiaowang & Chuyan Luo
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 21 22:27:48 2018
-
-@author: luochuyan
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Nov 21 22:27:48 2018
-
-@author: luochuyan
-"""
-
 import pandas as pd  
 import numpy as np
 pd.core.common.is_list_like = pd.api.types.is_list_like
