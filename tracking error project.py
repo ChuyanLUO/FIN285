@@ -14,6 +14,14 @@ Created on Wed Nov 21 22:27:48 2018
 @author: luochuyan
 """
 
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Nov 21 22:27:48 2018
+
+@author: luochuyan
+"""
+
 import pandas as pd  
 import numpy as np
 pd.core.common.is_list_like = pd.api.types.is_list_like
@@ -56,6 +64,7 @@ daily_return = daily_close_px2.pct_change().dropna()
 # Descriptive plots
 # index price
 Index_prs = pd.DataFrame(daily_close_px2 @ TickerNWeights)
+Index_prs.columns = ["Index Price"]
 # index return
 Index_ret = pd.DataFrame(daily_return @ TickerNWeights)
 # index risk
@@ -262,7 +271,28 @@ corr_v = daily_ret_valid.corr()
 TE_optimized_v = tracking_error(wts_active,cov_end_v)
 print('{0} top weighted stock replication TE in validation set= {1:5.2f} bps'.format(num_topwtstock_include, TE_optimized_v*10000))
 
+ETF_prs = pd.DataFrame(daily_close_px2.iloc[:,:num_topwtstock_include] @ TickerNWeights.iloc[:num_topwtstock_include,:])
+ETF_prs.columns = ["ETF Price"]
 
+ETF_ret = ETF_prs.pct_change().dropna()
+
+Index_cumu_ret = (Index_ret + 1).cumprod()
+ETF_cumu_ret = (ETF_ret + 1).cumprod()
+Index_cumu_ret.columns = ["Index Ret"]
+ETF_cumu_ret.columns = ["ETF Ret"]
+
+#Comparisons
+figure_count = figure_count+1
+pd.concat([Index_prs, ETF_prs], axis=1).plot()
+plt.ylabel('Daily Price')
+plt.show()
+
+figure_count = figure_count+1
+pd.concat([Index_cumu_ret, ETF_cumu_ret], axis=1).plot()
+plt.ylabel('Cumulative Return')
+plt.show()
+
+ETF_prs.to_csv('ETF_daily_price.csv', header=True, index=True)
 
 #1. #MA
 
