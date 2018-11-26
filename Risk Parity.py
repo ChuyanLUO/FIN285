@@ -5,6 +5,14 @@ Created on Sat Nov 24 22:40:45 2018
 
 @author: jingxiaowang
 """
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Nov 26 15:20:14 2018
+
+@author: luochuyan
+"""
+
 import pandas as pd  
 import numpy as np
 pd.core.common.is_list_like = pd.api.types.is_list_like
@@ -19,15 +27,15 @@ import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 from datetime import timedelta
 from collections import OrderedDict
-
+#%%
 def getDataBatch(tickers, startdate, enddate):
   def getData(ticker):
     return (pdr.get_data_yahoo(ticker, start=startdate, end=enddate))
   datas = map(getData, tickers)
   return(pd.concat(datas, keys=tickers, names=['Ticker', 'Date']))
-start_dt = datetime.datetime(2008, 10, 31)
+start_dt = datetime.datetime(2007, 6, 4)
 end_dt = datetime.datetime(2018, 10, 31)
-tickers = ['BND', 'BIV', 'WIP', 'IEF', 'IEI','GLD','DBC','GSC']
+tickers = ['BND', 'BIV', 'WIP', 'IEF', "AGG",'LQD','GLD','DBC','GSC']
 bond_data = getDataBatch(tickers, start_dt, end_dt)
 daily_close_bond = bond_data.reset_index().pivot(index='Date', columns='Ticker', values='Adj Close')
 daily_stock = pd.read_csv('ETF_daily_price.csv',index_col=0)
@@ -48,8 +56,9 @@ sns.heatmap(corr,
         cmap="YlGnBu"        )
 plt.title('Correlation of ETFs')
 print(corr)
+#%%
 # get our portfolio
-daily_portret2 = daily_portret.loc[:,('stock ETF','IEF','GLD')]
+daily_portret2 = daily_portret.loc[:,('stock ETF','BND','GLD')]
 
 # functions that will be used
 # calculate covariance matrix by using EWMA
@@ -108,7 +117,7 @@ cov_port = cov_ewma(daily_portret2_demean, lamda)
 #%%
 # Construct risk parity portfolio
 # portfolio dates - this defines the first date of portfolio construction
-datestr = daily_portret2.index[daily_portret2.index >= '2009-06-30']
+datestr = daily_portret2.index[daily_portret2.index >= '2008-03-31']
 # previous month
 mth_previous = datestr[0]
 # initialise portfolio weights matrix
@@ -120,7 +129,7 @@ window = 30
 Wts_min = 0.0
 risk_budget = 1.0/num_assets*np.ones([1,num_assets]) #risk-party
 #risk_budget = [0.7, 0.4]
-leverage = True
+leverage = False
 varmodel = 'ewma'
 
 
@@ -141,7 +150,7 @@ for t in datestr:
     ret_riskParity.loc[t] = np.sum(wts.loc[t] * daily_portret2.loc[t])
     
 # Due to precision issue, wts could be a tiny negative number instead of zero, make them zero
-wts[wts<0]=0.1
+wts[wts<0]=0.0
 # Construct equal weighted portfolio
 ret_equalwted = pd.DataFrame(np.sum(1.0*daily_portret2[daily_portret2.index>=datestr[0]]/num_assets, axis=1), columns=['Equal Weighted'])
 # Construct 60/40 weighted portfolio
@@ -197,3 +206,4 @@ plt.figure(figure_count)
 figure_count = figure_count + 1
 wts.plot.area()
 plt.ylabel('asset weights')
+
