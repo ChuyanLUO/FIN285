@@ -17,6 +17,8 @@ import warnings
 warnings.filterwarnings("ignore")
 from scipy import optimize
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import datetime
 
 # download price
 def getDataBatch(tickers, startdate, enddate):
@@ -24,7 +26,7 @@ def getDataBatch(tickers, startdate, enddate):
     return (pdr.get_data_yahoo(ticker, start=startdate, end=enddate))
   datas = map(getData, tickers)
   return(pd.concat(datas, keys=tickers, names=['Ticker', 'Date']))
-start_dt = datetime.datetime(2008, 10, 31)
+start_dt = datetime.datetime(2007, 6, 4)
 end_dt = datetime.datetime(2018, 10, 31)
 tickers = ['ACAD','ALKS','ALNY','ALXN','AMGN','ARRY','BIIB','BMRN','CELG','EXEL','FOLD','GHDX','GILD','HALO','ILMN','IMMU','INCY','IONS','JAZZ','LGND','MDCO','MYGN','MYL','NBIX','NKTR','OPK','REGN','RGEN','SGEN','SHPG','SRPT','TECH','UTHR','VRTX']
 stock_data = getDataBatch(tickers, start_dt, end_dt)
@@ -50,7 +52,7 @@ daily_return = daily_close_px2.pct_change().dropna()
 Index_prs = pd.DataFrame(daily_close_px2 @ TickerNWeights)
 Index_prs.columns = ["Index Price"]
 # index return
-Index_ret = pd.DataFrame(daily_return @ TickerNWeights)
+Index_ret = Index_prs.pct_change().dropna()
 # index risk
 Index_risk = pd.DataFrame(Index_ret ** 2)
 
@@ -111,8 +113,8 @@ def opt_min_te(W, C, b_, c_):
     return(te_opt(W, C, obj_te, c_, b_))
 
 ##Data partitioning
-daily_ret_train = np.split(daily_return, [2015-12-31],axis=0)[0]
-daily_ret_valid = np.split(daily_return, [2015-12-31],axis=0)[1]
+daily_ret_train = np.split(daily_return, [2016-3-1],axis=0)[0]
+daily_ret_valid = np.split(daily_return, [2016-3-1],axis=0)[1]
 
 num_periods, num_stock = daily_ret_train.shape
 
@@ -191,7 +193,7 @@ ax.xaxis.set_tick_params(labelsize=14)
 ax.yaxis.set_tick_params(labelsize=14)
 
 # choose the number of index and show the min TE
-num_topwtstock_include = 19
+num_topwtstock_include = 17
 # only the top weight stocks + allow shorting 
 b1a_ = [(-1.0,1.0) for i in range(num_topwtstock_include)] 
 # exclude bottom weighted stocks
@@ -267,16 +269,21 @@ ETF_cumu_ret.columns = ["ETF Ret"]
 
 #Comparisons
 figure_count = figure_count+1
-pd.concat([Index_prs, ETF_prs], axis=1).plot()
-plt.ylabel('Daily Price')
-plt.show()
-
-figure_count = figure_count+1
-pd.concat([Index_cumu_ret, ETF_cumu_ret], axis=1).plot()
+ax4=plt.subplot(111)
+ax4.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+plt.plot(Index_cumu_ret)
+ax4.plot(ETF_cumu_ret)
+plt.plot([datetime.datetime(2015,12,31),datetime.datetime(2015,12,31)],[0,7],linestyle='dashed')
+plt.text(datetime.datetime(2009,12,31), 5, 'Training', fontsize=10)
+plt.text(datetime.datetime(2009,12,31), 4.5, 'TE = 7.61 bps', fontsize=10)
+plt.text(datetime.datetime(2016,2,28), 3, 'Validation', fontsize=10)
+plt.text(datetime.datetime(2016,2,28), 2.5, 'TE = 11.28 bps', fontsize=10)
 plt.ylabel('Cumulative Return')
+ax4.legend(["Index Cum Return","ETF Cum Return"])
 plt.show()
 
 ETF_prs.to_csv('ETF_daily_price.csv', header=True, index=True)
+
 
 #1. #MA
 
